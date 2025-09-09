@@ -79,7 +79,7 @@
   .menu-btn{background:transparent; border:none; color:var(--muted); cursor:pointer; padding:6px; border-radius:6px}
   .menu-btn:hover{background:var(--hover); color:var(--text)}
   .menu-pop{
-    position:absolute; top:32px; right:0; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; min-width:180px; z-index:10; display:none;
+    position:absolute; top:32px; right:0; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; min-width:180px;  z-index: 1000;display:none;
   }
   .menu-pop.open{display:block; animation:pop .12s ease-out}
   @keyframes pop{from{transform:translateY(-6px);opacity:0}to{transform:translateY(0);opacity:1}}
