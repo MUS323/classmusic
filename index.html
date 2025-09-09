@@ -767,6 +767,104 @@ const FORM_URL = "https://docs.google.com/forms/d/1ovI4NJlheYaF6C3aVFdo2rj5Xtf8D
 document.getElementById("requestBtn").addEventListener("click", () => {
   window.open(FORM_URL, "_blank");
 });
+  // 保存用キー
+const LS_KEY = "mini_spotify_v1";
+
+// アプリの状態
+const state = {
+  tracks: [],           // {id,title,artist,album,cover,src(base64),liked}
+  playlists: [],
+  currentId: null,
+  playing: false
+};
+
+// ユニークID生成
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+// デフォルトのカバー画像
+const coverFallback = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>
+    <rect width='100%' height='100%' fill='#101820'/>
+    <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#22c55e' font-family='system-ui' font-size='28'>No Cover</text>
+  </svg>`
+);
+
+// ====== 保存・読み込み ======
+function save() {
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+
+function load() {
+  const raw = localStorage.getItem(LS_KEY);
+  if (raw) {
+    Object.assign(state, JSON.parse(raw));
+  }
+}
+
+// ====== ファイル → Base64変換 ======
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result); // base64データURL
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ====== ファイル追加処理 ======
+async function addFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith("audio/")) continue;
+    const base64 = await fileToBase64(f);
+    state.tracks.push({
+      id: uid(),
+      title: f.name.replace(/\.[^/.]+$/, ""),
+      artist: "Local",
+      album: "Imports",
+      cover: coverFallback,
+      src: base64, // ← Base64で保存
+      liked: false
+    });
+  }
+  save();
+  render(); // ← UI更新関数（既存のやつを呼ぶ）
+}
+
+// ====== D&D対応 ======
+const dropzone = document.createElement("div");
+dropzone.style.cssText = `
+  position:fixed; inset:0; display:none; place-items:center;
+  background:rgba(22,185,103,.08); border:2px dashed #1db954;
+  color:#a5f3c6; font-weight:700; letter-spacing:.1em; z-index:999;
+`;
+dropzone.textContent = "Drop your music files 🎧";
+document.body.appendChild(dropzone);
+
+document.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropzone.style.display = "grid";
+});
+document.addEventListener("dragleave", e => {
+  if (e.target === document) dropzone.style.display = "none";
+});
+document.addEventListener("drop", e => {
+  e.preventDefault();
+  dropzone.style.display = "none";
+  if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+});
+
+// ====== ファイル選択ボタン対応 ======
+document.getElementById("addFiles").addEventListener("click", () => {
+  document.getElementById("fileInput").click();
+});
+document.getElementById("fileInput").addEventListener("change", e => {
+  addFiles(e.target.files);
+});
+
+// ====== 初期化 ======
+load();
+render(); // ← UI描画
+
 
 </script>
 </body>
