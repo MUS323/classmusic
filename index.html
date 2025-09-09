@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Class Music</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#0f141a; --panel-2:#111821; --accent:#22c55e;
+    --accent-2:#16a34a; --text:#e6f1ff; --muted:#92a3b8; --danger:#ef4444;
+    --card:#101820; --border:#1b2633; --hover:#16202b; --shadow:0 10px 30px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:linear-gradient(120deg,#0b0f14,#0b0f14 40%,#0a1118 100%);
+    color:var(--text); font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    letter-spacing:.2px; overflow:hidden;
+  }
+  a{color:inherit;text-decoration:none}
+  .app{
+    display:grid; grid-template-rows:auto 1fr auto; height:100%;
+    grid-template-columns:260px 1fr; grid-template-areas:
+    "sidebar header"
+    "sidebar main"
+    "player player";
+  }
+  header{grid-area:header; display:flex; align-items:center; gap:12px; padding:12px 16px; background:rgba(17,24,33,.6); backdrop-filter:blur(8px); border-bottom:1px solid var(--border)}
+  .logo{display:flex; align-items:center; gap:10px; font-weight:700}
+  .logo-badge{width:26px;height:26px;border-radius:6px;background:conic-gradient(from 0deg,#22c55e,#16a34a,#22c55e); box-shadow:0 0 20px rgba(34,197,94,.4)}
+  .search{flex:1; position:relative}
+  .search input{
+    width:100%; background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:10px 36px 10px 12px; color:var(--text); outline:none; transition:.2s border, .2s background;
+  }
+  .search input:focus{border-color:#234b33; background:#0e151d}
+  .search .icon{position:absolute; right:10px; top:50%; transform:translateY(-50%); color:var(--muted)}
+  .actions{display:flex; gap:8px}
+  .btn{
+    appearance:none; border:1px solid var(--border); background:var(--panel); color:var(--text);
+    padding:8px 12px; border-radius:8px; cursor:pointer; transition:.15s transform, .2s background, .2s border;
+  }
+  .btn:hover{transform:translateY(-1px); background:var(--hover)}
+  .btn.primary{background:var(--accent); border-color:transparent; color:#04130a; font-weight:700}
+  .btn.primary:hover{background:var(--accent-2)}
+  .sidebar{grid-area:sidebar; display:flex; flex-direction:column; gap:10px; padding:12px; border-right:1px solid var(--border); background:var(--panel-2); overflow:auto}
+  .nav{display:flex; flex-direction:column; gap:6px}
+  .nav .tab{padding:10px 12px; border-radius:8px; color:var(--muted); cursor:pointer; transition:.2s; display:flex; align-items:center; gap:10px}
+  .nav .tab.active, .nav .tab:hover{color:var(--text); background:var(--hover)}
+  .section-title{font-size:12px; text-transform:uppercase; color:var(--muted); letter-spacing:.12em; margin:8px 6px}
+  .playlist-list{display:flex; flex-direction:column; gap:4px}
+  .playlist-item{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:.2s; border:1px solid transparent}
+  .playlist-item:hover{background:var(--hover)}
+  .playlist-item.active{background:#0f1c14; border-color:#163b26}
+  .playlist-item .dot{width:8px;height:8px;border-radius:50%;background:var(--accent); box-shadow:0 0 10px rgba(34,197,94,.5)}
+  .playlist-actions{display:flex; gap:6px; margin:0 6px}
+  main{grid-area:main; overflow:auto; padding:16px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(170px,1fr)); gap:14px}
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow);
+    display:flex; flex-direction:column; transition:.2s transform, .2s box-shadow, .2s border;
+  }
+  .card:hover{transform:translateY(-2px); border-color:#173023}
+  .cover{position:relative; aspect-ratio:1/1; background:#0d141c; display:grid; place-items:center; overflow:hidden}
+  .cover img{width:100%; height:100%; object-fit:cover}
+  .cover .play-btn{
+    position:absolute; right:8px; bottom:8px; width:38px; height:38px; border-radius:50%;
+    background:var(--accent); color:#06210f; display:grid; place-items:center; font-weight:800; cursor:pointer; box-shadow:0 8px 20px rgba(34,197,94,.35); transition:.2s transform,.2s background;
+  }
+  .cover .play-btn:hover{transform:scale(1.06); background:var(--accent-2)}
+  .meta{padding:10px}
+  .title{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .subtitle{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .meta-row{display:flex; justify-content:space-between; align-items:center; margin-top:6px}
+  .pill{font-size:11px; color:#0e1a12; background:#42d17a; border-radius:999px; padding:3px 8px; font-weight:700}
+  .menu{position:relative}
+  .menu-btn{background:transparent; border:none; color:var(--muted); cursor:pointer; padding:6px; border-radius:6px}
+  .menu-btn:hover{background:var(--hover); color:var(--text)}
+  .menu-pop{
+    position:absolute; top:32px; right:0; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; min-width:180px; z-index:10; display:none;
+  }
+  .menu-pop.open{display:block; animation:pop .12s ease-out}
+  @keyframes pop{from{transform:translateY(-6px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .menu-item{padding:10px 12px; color:var(--text); cursor:pointer}
+  .menu-item:hover{background:var(--hover)}
+  .menu-item.danger{color:#fecaca}
+  .empty{opacity:.7; border:1px dashed var(--border); border-radius:12px; padding:20px; text-align:center}
+  .player{grid-area:player; background:rgba(10,16,22,.85); backdrop-filter:blur(8px); border-top:1px solid var(--border); display:grid; grid-template-columns:320px 1fr 320px; gap:10px; align-items:center; padding:10px 14px}
+  .now{display:flex; align-items:center; gap:12px; min-width:0}
+  .now .thumb{width:56px; height:56px; border-radius:8px; overflow:hidden; background:#0f1720; border:1px solid var(--border)}
+  .now .info{min-width:0}
+  .now .t{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .now .a{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .controls{display:flex; flex-direction:column; align-items:center; gap:6px}
+  .row{display:flex; align-items:center; gap:8px}
+  .icon-btn{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--border); background:var(--panel); color:var(--text); cursor:pointer}
+  .icon-btn:hover{background:var(--hover)}
+  .icon-btn.primary{background:var(--accent); border-color:transparent; color:#06210f; font-weight:800}
+  .bar{display:flex; align-items:center; gap:8px; width:100%}
+  .progress{flex:1; height:6px; background:#0e151d; border-radius:999px; position:relative; cursor:pointer; border:1px solid var(--border)}
+  .progress .fill{position:absolute; left:0; top:0; bottom:0; width:0%; background:linear-gradient(90deg,#36d97f,#1db954); border-radius:inherit}
+  .progress .handle{position:absolute; top:50%; transform:translate(-50%,-50%); width:12px;height:12px;border-radius:50%; background:#c4f5d8; box-shadow:0 0 0 4px rgba(66,209,122,.15); left:0%}
+  .right{display:flex; align-items:center; gap:10px; justify-content:flex-end}
+  .volume{display:flex; align-items:center; gap:8px; width:160px}
+  .volbar{flex:1; height:6px; background:#0e151d; border:1px solid var(--border); border-radius:999px; position:relative; cursor:pointer}
+  .volbar .vfill{position:absolute; left:0; top:0; bottom:0; width:60%; background:#2dcf76; border-radius:inherit}
+  .tag{font-size:11px; color:var(--muted); border:1px solid var(--border); background:var(--panel); padding:4px 8px; border-radius:999px}
+  canvas#viz{height:56px; width:100%; display:block; opacity:.9}
+  .dropzone{position:fixed; inset:0; display:none; place-items:center; background:rgba(22, 185, 103, .08); border:2px dashed #1db954; color:#a5f3c6; font-weight:700; letter-spacing:.1em; z-index:999}
+  .dropzone.on{display:grid; animation:fade .12s}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+
+  @media (max-width: 980px){
+    .app{grid-template-columns: 1fr; grid-template-areas:
+      "header" "main" "player"; }
+    .sidebar{display:none}
+    .player{grid-template-columns:1fr; grid-auto-rows:auto}
+    .right{justify-content:center}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+         <div class="logo"><div class="logo-badge"></div>Class Music</div>
+    
+    <div class="nav">
+      <div class="tab active" data-tab="home">🏠 ホーム</div>
+      <div class="tab" data-tab="library">🎵 ライブラリ</div>
+      <div class="tab" data-tab="search">🔎 検索</div>
+    </div>
+    <div class="section-title">Playlists</div>
+    <div class="playlist-actions">
+      <button id="newPlaylist" class="btn">＋ 新規プレイリスト</button>
+      <button id="addFiles" class="btn">＋ 追加</button>
+      <input id="fileInput" type="file" accept="audio/*" multiple hidden />
+    </div>
+    <div id="playlists" class="playlist-list"></div>
+  </aside>
+
+  <header>
+    <div class="logo"><div class="logo-badge"></div> Vibes</div>
+    <div class="search">
+      <input id="searchInput" placeholder="曲・アーティスト・アルバムで検索 (⌘/Ctrl + K)" />
+      <div class="icon">⌘K</div>
+    </div>
+    <div class="actions">
+      <button id="likedBtn" class="btn">❤ Liked</button>
+      <button id="clearAll" class="btn">🧹 リセット</button>
+      <button id="requestBtn" class="btn primary">🎤 曲リクエスト</button>
+
+    </div>
+  </header>
+
+  <main id="main"></main>
+
+  <footer class="player">
+    <div class="now">
+      <div class="thumb"><img id="nowCover" alt="" width="56" height="56" /></div>
+      <div class="info">
+        <div class="t" id="nowTitle">—</div>
+        <div class="a" id="nowArtist">—</div>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="row">
+        <button id="btnShuffle" class="icon-btn">🔀</button>
+        <button id="btnPrev" class="icon-btn">⏮</button>
+        <button id="btnPlay" class="icon-btn primary">▶</button>
+        <button id="btnNext" class="icon-btn">⏭</button>
+        <button id="btnRepeat" class="icon-btn">🔁</button>
+      </div>
+      <div class="bar">
+        <span class="tag" id="cur">0:00</span>
+        <div id="progress" class="progress"><div class="fill"></div><div class="handle"></div></div>
+        <span class="tag" id="dur">0:00</span>
+
+
+      </div>
+      <canvas id="viz"></canvas>
+    </div>
+    <div class="right">
+      <button id="btnQueue" class="btn">📜 キュー</button>
+      <div class="volume">
+        <span>🔉</span>
+        <div id="volbar" class="volbar"><div class="vfill"></div></div>
+        <span id="volLabel" class="tag">60%</span>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<div id="dropzone" class="dropzone">Drop your music files 🎧</div>
+
+<script>
+(() => {
+  // ---------- State ----------
+  const LS_KEY = "mini_spotify_v1";
+  const state = {
+    tracks: [],           // {id,title,artist,album,cover,src,liked,dur?}
+    playlists: [],        // {id,name,trackIds:[]}
+    queue: [],            // array of trackIds
+    currentId: null,
+    playing: false,
+    shuffle: false,
+    repeat: "off",        // off | one | all
+    volume: 0.6,
+    view: "home",         // home | library | search | playlist:<id> | liked
+    search: ""
+  };
+
+  // ---------- Demo Tracks ----------
+const demo = [
+
+
+  /*
+  // ====== 新しい曲を追加するときはこのひな形をコピペ ======
+  {
+    title: "曲名",
+    artist: "アーティスト名",
+    album: "アルバム名",
+    cover: "カバー画像URL（任意）",
+    src: "音源ファイルのURLまたは相対パス"
+  },
+  */
+];
+
+
+
+  // ---------- Persistence ----------
+  function load() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) {
+        // seed
+        state.tracks = demo.map((d,i) => ({ id: uid(), ...d, liked:false }));
+        state.playlists = [{ id: uid(), name: "Daily Mix", trackIds: state.tracks.map(t=>t.id) }];
+        save();
+      } else {
+        const parsed = JSON.parse(raw);
+        Object.assign(state, parsed);
+      }
+    } catch(e) {
+      console.warn("load error", e);
+    }
+    audio.volume = state.volume;
+    setVolUI(state.volume);
+  }
+  function save() {
+    const copy = JSON.parse(JSON.stringify(state));
+    // duration not necessary to persist if missing
+    localStorage.setItem(LS_KEY, JSON.stringify(copy));
+  }
+  function resetAll() {
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  }
+
+  // ---------- Utils ----------
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const h = (tag, attrs={}, children=[]) => {
+    const el = document.createElement(tag);
+    for (const [k,v] of Object.entries(attrs)) {
+      if (k === "class") el.className = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else if (k === "html") el.innerHTML = v;
+      else el.setAttribute(k,v);
+    }
+    for (const c of [].concat(children)) {
+      if (c==null) continue;
+      if (typeof c === "string") el.appendChild(document.createTextNode(c));
+      else el.appendChild(c);
+    }
+    return el;
+  };
+  const uid = () => Math.random().toString(36).slice(2,9);
+  const fmt = s => {
+    if (!isFinite(s)) return "0:00";
+    s = Math.max(0, Math.floor(s));
+    const m = Math.floor(s/60), r = (s%60).toString().padStart(2,"0");
+    return `${m}:${r}`;
+  };
+  const coverFallback = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>
+      <rect width='100%' height='100%' fill='#101820'/>
+      <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#22c55e' font-family='system-ui' font-size='28'>No Cover</text>
+    </svg>`
+  );
+
+  // ---------- Audio + Viz ----------
+  const audio = new Audio();
+  audio.preload = "metadata";
+  let ctx, srcNode, analyser, dataArray, rafId;
+
+  function ensureAudioGraph() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    srcNode = ctx.createMediaElementSource(audio);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    const bufferLength = analyser.frequencyBinCount;
+    dataArray = new Uint8Array(bufferLength);
+    srcNode.connect(analyser);
+    analyser.connect(ctx.destination);
+  }
+  const viz = $("#viz");
+  const vctx = viz.getContext("2d");
+  function drawViz() {
+    const w = viz.clientWidth, hgt = viz.clientHeight;
+    viz.width = w * devicePixelRatio; viz.height = hgt * devicePixelRatio;
+    vctx.scale(devicePixelRatio, devicePixelRatio);
+    vctx.clearRect(0,0,w,hgt);
+    if (!analyser) return;
+    analyser.getByteFrequencyData(dataArray);
+    const bars = 40;
+    const step = Math.floor(dataArray.length / bars);
+    const bw = (w - (bars-1)*4) / bars;
+    for (let i=0;i<bars;i++){
+      const val = dataArray[i*step]/255;
+      const bh = Math.max(2, val * (hgt-6));
+      const x = i*(bw+4), y = hgt - bh;
+      const grad = vctx.createLinearGradient(0,y,0,hgt);
+      grad.addColorStop(0,"#36d97f");
+      grad.addColorStop(1,"#1db954");
+      vctx.fillStyle = grad;
+      vctx.fillRect(x,y,bw,bh);
+      vctx.fillStyle = "rgba(29,185,84,.25)";
+      vctx.fillRect(x, hgt-2, bw, 2);
+    }
+    rafId = requestAnimationFrame(drawViz);
+  }
+
+  // ---------- Rendering ----------
+  const main = $("#main");
+  function render() {
+    renderSidebar();
+    renderMain();
+    renderPlayer();
+  }
+
+  function renderSidebar() {
+    // tabs
+    $$(".nav .tab").forEach(el=>{
+      el.classList.toggle("active", el.dataset.tab === state.view || (state.view.startsWith("playlist:") && el.dataset.tab==="library"));
+    });
+
+    // playlists
+    const cont = $("#playlists");
+    cont.innerHTML = "";
+    state.playlists.forEach(pl=>{
+      const active = state.view === `playlist:${pl.id}`;
+      const item = h("div",{class:"playlist-item"+(active?" active":"")});
+      item.append(
+        h("div",{class:"dot"}),
+        h("div",{},[h("div",{style:"font-weight:700"},[pl.name]), h("div",{class:"subtitle"},[`${pl.trackIds.length} 曲`])])
+      );
+      item.addEventListener("click", ()=>{ state.view = `playlist:${pl.id}`; render(); });
+      cont.appendChild(item);
+    });
+  }
+
+  function renderMain() {
+    main.innerHTML = "";
+    if (state.view === "home") return renderHome();
+    if (state.view === "library") return renderLibrary();
+    if (state.view === "search") return renderSearch();
+    if (state.view.startsWith("playlist:")) return renderPlaylist(state.view.split(":")[1]);
+    if (state.view === "liked") return renderLiked();
+  }
+
+  function songCard(track) {
+    const playingNow = state.currentId === track.id && state.playing;
+    const card = h("div",{class:"card"});
+    const cv = h("div",{class:"cover"},
+      [h("img",{src:track.cover||coverFallback, onerror:(e)=>{e.target.src=coverFallback}})]
+    );
+    const play = h("div",{class:"play-btn", onclick:()=>togglePlayTrack(track.id)}, [playingNow?"⏸":"▶"]);
+    cv.appendChild(play);
+    const meta = h("div",{class:"meta"},[
+      h("div",{class:"title"},[track.title||"Untitled"]),
+      h("div",{class:"subtitle"},[track.artist||"Unknown"]),
+      h("div",{class:"meta-row"},[
+        h("span",{class:"pill"},[track.album||"Single"]),
+        h("div",{class:"menu"},[
+          h("button",{class:"menu-btn", onclick:(e)=>toggleMenu(e)},["⋯"]),
+          h("div",{class:"menu-pop"},[
+            h("div",{class:"menu-item", onclick:()=>queueNext(track.id)},["次に再生"]),
+            h("div",{class:"menu-item", onclick:()=>addToPlaylistPrompt(track.id)},["プレイリストに追加"]),
+            h("div",{class:"menu-item", onclick:()=>toggleLike(track.id)},[track.liked?"❤ いいね解除":"❤ いいね"]),
+            h("div",{class:"menu-item danger", onclick:()=>removeTrack(track.id)},["削除"])
+          ])
+        ])
+      ])
+    ]);
+    card.append(cv, meta);
+    return card;
+  }
+
+  function renderHome() {
+    const wrap = h("div",{},[
+      h("h2",{},["今日のおすすめ"]),
+      h("div",{class:"grid"}, state.tracks.slice(0,8).map(songCard)),
+      h("div",{class:"empty", style:"margin-top:12px"},["自分の曲をドロップして、ホームを育てよう。"])
+    ]);
+    main.appendChild(wrap);
+  }
+
+  function renderLibrary() {
+    if (!state.tracks.length){
+      main.appendChild(h("div",{class:"empty"},["まだ曲がない。左下の追加 or ドロップで入れよう。"]));
+      return;
+    }
+    main.appendChild(h("h2",{},["ライブラリ"]));
+    main.appendChild(h("div",{class:"grid"}, state.tracks.map(songCard)));
+  }
+
+  function renderSearch() {
+    const q = state.search.trim().toLowerCase();
+    const list = state.tracks.filter(t =>
+      [t.title,t.artist,t.album].join(" ").toLowerCase().includes(q)
+    );
+    const head = h("div",{},[
+      h("h2",{},[`“${state.search}” の検索結果 (${list.length})`])
+    ]);
+    const grid = h("div",{class:"grid"}, list.map(songCard));
+    if (!list.length) grid.append(h("div",{class:"empty"},["該当なし。別ワード試してみて。"]));
+    main.append(head, grid);
+  }
+
+  function renderPlaylist(id) {
+    const pl = state.playlists.find(p=>p.id===id);
+    if (!pl){
+      main.appendChild(h("div",{class:"empty"},["プレイリストが見つからない……"]));
+      return;
+    }
+    const head = h("div",{style:"display:flex; align-items:center; gap:8px; margin-bottom:8px"},[
+      h("h2",{},[pl.name]),
+      h("button",{class:"btn", onclick:()=>renamePlaylist(pl.id)},["✏ リネーム"]),
+      h("button",{class:"btn", onclick:()=>deletePlaylist(pl.id)},["🗑 削除"]),
+      h("button",{class:"btn primary", onclick:()=>playPlaylist(pl.id)},["▶ 再生"])
+    ]);
+    const grid = h("div",{class:"grid"});
+    pl.trackIds.map(id => state.tracks.find(t=>t.id===id)).filter(Boolean).forEach(t=>grid.appendChild(songCard(t)));
+    if (!pl.trackIds.length) grid.append(h("div",{class:"empty"},["曲がない。曲のメニューから追加してね。"]));
+    main.append(head, grid);
+  }
+
+  function renderLiked() {
+    const liked = state.tracks.filter(t=>t.liked);
+    main.appendChild(h("h2",{},["Liked"]));
+    if (!liked.length){
+      main.appendChild(h("div",{class:"empty"},["まだ ‘いいね’ がない。ハートを押してみて。"]));
+      return;
+    }
+    main.appendChild(h("div",{class:"grid"}, liked.map(songCard)));
+  }
+
+  function renderPlayer() {
+    const cur = state.tracks.find(t=>t.id===state.currentId);
+    $("#nowTitle").textContent = cur ? cur.title : "—";
+    $("#nowArtist").textContent = cur ? cur.artist : "—";
+    $("#nowCover").src = (cur && cur.cover) ? cur.cover : coverFallback;
+    $("#btnShuffle").classList.toggle("primary", state.shuffle);
+    $("#btnRepeat").textContent = state.repeat==="off"?"🔁":(state.repeat==="one"?"🔂":"🔁");
+    $("#btnRepeat").classList.toggle("primary", state.repeat!=="off");
+    $("#btnPlay").textContent = state.playing ? "⏸" : "▶";
+  }
+
+  // ---------- Actions ----------
+  function toggleMenu(e){
+    const pop = e.currentTarget.parentElement.querySelector(".menu-pop");
+    $$(".menu-pop.open").forEach(x=>{ if (x!==pop) x.classList.remove("open"); });
+    pop.classList.toggle("open");
+  }
+  document.addEventListener("click",(e)=>{
+    if (!e.target.closest(".menu")) $$(".menu-pop.open").forEach(x=>x.classList.remove("open"));
+  });
+
+  function toggleLike(id){
+    const t = state.tracks.find(x=>x.id===id);
+    if (!t) return;
+    t.liked = !t.liked;
+    save(); render();
+  }
+
+  function queueNext(id){
+    state.queue.unshift(id);
+    toast("次に再生へ追加");
+  }
+
+  function addToPlaylistPrompt(id){
+    if (!state.playlists.length){ toast("先にプレイリストを作ってね"); return; }
+    const name = prompt("追加先のプレイリスト名を入力（既存名でOK）:\n" + state.playlists.map(p=>"- "+p.name).join("\n"));
+    if (!name) return;
+    let pl = state.playlists.find(p=>p.name.toLowerCase()===name.toLowerCase());
+    if (!pl){ pl = {id:uid(), name, trackIds:[]}; state.playlists.push(pl); }
+    if (!pl.trackIds.includes(id)) pl.trackIds.push(id);
+    save(); render();
+  }
+
+  function removeTrack(id){
+    if (!confirm("この曲をライブラリから削除する？")) return;
+    state.tracks = state.tracks.filter(t=>t.id!==id);
+    state.playlists.forEach(pl=> pl.trackIds = pl.trackIds.filter(tid=>tid!==id));
+    state.queue = state.queue.filter(tid=>tid!==id);
+    if (state.currentId===id) stop();
+    save(); render();
+  }
+
+  function renamePlaylist(id){
+    const pl = state.playlists.find(p=>p.id===id);
+    const name = prompt("新しい名前", pl?.name || "");
+    if (!name) return;
+    pl.name = name; save(); render();
+  }
+
+  function deletePlaylist(id){
+    if (!confirm("プレイリストを削除する？")) return;
+    state.playlists = state.playlists.filter(p=>p.id!==id);
+    if (state.view===`playlist:${id}`) state.view = "library";
+    save(); render();
+  }
+
+  function playPlaylist(id){
+    const pl = state.playlists.find(p=>p.id===id);
+    if (!pl || !pl.trackIds.length) return;
+    play(pl.trackIds[0]);
+  }
+
+  function setView(v){ state.view = v; render(); }
+
+  // ---------- Player control ----------
+  function setCurrent(id){
+    const t = state.tracks.find(x=>x.id===id);
+    if (!t) return;
+    state.currentId = id;
+    audio.src = t.src;
+    audio.currentTime = 0;
+    ensureAudioGraph();
+    save(); render();
+  }
+
+  function play(id){
+    if (id && id!==state.currentId) setCurrent(id);
+    ensureAudioGraph();
+    ctx.resume && ctx.resume();
+    audio.play().then(()=>{
+      state.playing = true;
+      renderPlayer();
+      loopProgress();
+      if (!rafId) drawViz();
+    }).catch(err=> console.warn(err));
+  }
+
+  function pause(){
+    audio.pause();
+    state.playing = false;
+    renderPlayer();
+  }
+
+  function stop(){
+    pause();
+    state.currentId = null;
+    renderPlayer();
+  }
+
+  function togglePlayTrack(id){
+    if (state.currentId===id){
+      state.playing ? pause() : play();
+    } else {
+      play(id);
+    }
+  }
+
+  function next(){
+    const idxList = orderList();
+    const idx = idxList.indexOf(state.currentId);
+    const nextId = state.queue.length ? state.queue.shift()
+      : (idx>=0 && idx<idxList.length-1 ? idxList[idx+1] : (state.repeat==="all" ? idxList[0] : null));
+    if (nextId) play(nextId); else pause();
+  }
+
+  function prev(){
+    if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+    const idxList = orderList();
+    const idx = idxList.indexOf(state.currentId);
+    const prevId = (idx>0 ? idxList[idx-1] : (state.repeat==="all" ? idxList[idxList.length-1] : null));
+    if (prevId) play(prevId);
+  }
+
+  function orderList(){
+    const base = state.tracks.map(t=>t.id);
+    return state.shuffle ? shuffle(base) : base;
+  }
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for (let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  // progress UI
+  const progress = $("#progress");
+  const fill = progress.querySelector(".fill");
+  const handle = progress.querySelector(".handle");
+  function loopProgress(){
+    $("#cur").textContent = fmt(audio.currentTime);
+    $("#dur").textContent = fmt(isFinite(audio.duration)?audio.duration:0);
+    const p = audio.duration ? (audio.currentTime / audio.duration) : 0;
+    fill.style.width = `${p*100}%`;
+    handle.style.left = `${p*100}%`;
+    if (state.playing) requestAnimationFrame(loopProgress);
+  }
+  progress.addEventListener("click", (e)=>{
+    if (!audio.duration) return;
+    const rect = progress.getBoundingClientRect();
+    const p = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = p * audio.duration;
+  });
+
+  // volume
+  const volbar = $("#volbar");
+  function setVolUI(v){
+    volbar.querySelector(".vfill").style.width = `${v*100}%`;
+    $("#volLabel").textContent = `${Math.round(v*100)}%`;
+  }
+  function setVolumeByEvent(e){
+    const rect = volbar.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, (e.clientX - rect.left)/rect.width));
+    state.volume = p; audio.volume = p; setVolUI(p); save();
+  }
+  volbar.addEventListener("click", setVolumeByEvent);
+
+  // audio events
+  audio.addEventListener("ended", ()=>{
+    if (state.repeat==="one"){ play(state.currentId); return; }
+    next();
+  });
+  audio.addEventListener("loadedmetadata", ()=> loopProgress());
+
+  // ---------- Import (D&D / file) ----------
+  const dropzone = $("#dropzone");
+  function filesToTracks(files){
+    const arr = [];
+    for (const f of files){
+      if (!f.type.startsWith("audio/")) continue;
+      const url = URL.createObjectURL(f);
+      const name = f.name.replace(/\.[^/.]+$/, "");
+      arr.push({
+        id: uid(),
+        title: name,
+        artist: "Local",
+        album: "Imports",
+        cover: coverFallback,
+        src: url,
+        liked: false
+      });
+    }
+    return arr;
+  }
+
+  function addFiles(files){
+    const tracks = filesToTracks(files);
+    if (!tracks.length){ toast("音声ファイルが見つからない"); return; }
+    state.tracks.push(...tracks);
+    save(); render();
+    toast(`${tracks.length} 曲追加`);
+  }
+
+  document.addEventListener("dragover", (e)=>{ e.preventDefault(); dropzone.classList.add("on"); });
+  document.addEventListener("dragleave", (e)=>{ if (e.target===document) dropzone.classList.remove("on"); });
+  document.addEventListener("drop", (e)=>{
+    e.preventDefault(); dropzone.classList.remove("on");
+    if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+  });
+
+  $("#addFiles").addEventListener("click", ()=> $("#fileInput").click());
+  $("#fileInput").addEventListener("change", (e)=> addFiles(e.target.files));
+
+  // ---------- Header / Tabs / Liked ----------
+  $("#likedBtn").addEventListener("click", ()=>{ state.view="liked"; render(); });
+  $("#clearAll").addEventListener("click", resetAll);
+  $$(".nav .tab").forEach(el=> el.addEventListener("click", ()=> setView(el.dataset.tab)));
+  $("#searchInput").addEventListener("input", (e)=>{ state.search = e.target.value; state.view="search"; render(); });
+  document.addEventListener("keydown",(e)=>{
+    if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="k"){ e.preventDefault(); $("#searchInput").focus(); }
+  });
+
+  // ---------- Buttons ----------
+  $("#btnPlay").addEventListener("click", ()=> state.playing ? pause() : (state.currentId ? play() : play(state.tracks[0]?.id)));
+  $("#btnPrev").addEventListener("click", prev);
+  $("#btnNext").addEventListener("click", next);
+  $("#btnShuffle").addEventListener("click", ()=>{ state.shuffle = !state.shuffle; save(); renderPlayer(); });
+  $("#btnRepeat").addEventListener("click", ()=>{
+    state.repeat = state.repeat==="off" ? "one" : (state.repeat==="one" ? "all" : "off");
+    save(); renderPlayer();
+  });
+  $("#btnQueue").addEventListener("click", ()=>{
+    if (!state.queue.length){ toast("キューは空だよ"); return; }
+    alert("Queue:\n" + state.queue.map(id => state.tracks.find(t=>t.id===id)?.title || id).join("\n"));
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown",(e)=>{
+    const tag = document.activeElement?.tagName;
+    if (tag==="INPUT" || tag==="TEXTAREA") return;
+    const k = e.key.toLowerCase();
+    if (k===" "){ e.preventDefault(); $("#btnPlay").click(); }
+    if (k==="arrowright"){ audio.currentTime += 5; }
+    if (k==="arrowleft"){ audio.currentTime -= 5; }
+    if (k==="arrowup"){ state.volume = Math.min(1, state.volume+0.05); audio.volume=state.volume; setVolUI(state.volume); save(); }
+    if (k==="arrowdown"){ state.volume = Math.max(0, state.volume-0.05); audio.volume=state.volume; setVolUI(state.volume); save(); }
+    if (k==="s"){ state.shuffle = !state.shuffle; renderPlayer(); save(); }
+    if (k==="r"){ $("#btnRepeat").click(); }
+    if (k==="l"){ const id = state.currentId; if (id) toggleLike(id); }
+    if (k==="n"){ next(); } if (k==="p"){ prev(); }
+  });
+
+  // ---------- Toast ----------
+  let toastTimer;
+  function toast(msg){
+    const t = document.createElement("div");
+    Object.assign(t.style,{
+      position:"fixed", left:"50%", bottom:"22px", transform:"translateX(-50%)",
+      background:"rgba(12, 22, 16, .95)", border:"1px solid #1f3b2a", color:"#c6f7da",
+      padding:"10px 14px", borderRadius:"10px", boxShadow:"0 10px 30px rgba(0,0,0,.45)", zIndex:1000
+    });
+    t.textContent = msg;
+    document.body.appendChild(t);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> t.remove(), 1600);
+  }
+
+  // ---------- Init ----------
+  $("#newPlaylist").addEventListener("click", ()=>{
+    const name = prompt("プレイリスト名", "New Playlist");
+    if (!name) return;
+    state.playlists.push({id:uid(), name, trackIds:[]});
+    save(); renderSidebar();
+  });
+
+  load();
+  render();
+})();
+
+// GoogleフォームのURL（回答ページ）
+const FORM_URL = "https://docs.google.com/forms/d/1ovI4NJlheYaF6C3aVFdo2rj5Xtf8D9Ffl5i79xv7WOM/viewform";
+
+document.getElementById("requestBtn").addEventListener("click", () => {
+  window.open(FORM_URL, "_blank");
+});
+
+</script>
+</body>
+</html>
